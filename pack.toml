@@ -1,0 +1,10 @@
+[custom.all.keylay-gen]
+type = "local"
+path = "."
+ipkg = "keylay-gen.ipkg"
+test = "test/test.ipkg"
+
+[custom.all.keylay-gen-test]
+type = "local"
+path = "test"
+ipkg = "test.ipkg"
