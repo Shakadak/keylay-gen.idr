@@ -8,7 +8,7 @@ hello = (putStrLn "Hello, App world!")
 
 data Counter : Type where
 
-helloCount : (Console es, (State Counter Int es)) => App es ()
+helloCount : Has [Console, State Counter Int] es => App es ()
 helloCount = do c <- get Counter
                 put Counter (c + 1)
                 putStrLn "Hello, counting world"
