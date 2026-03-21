@@ -1,0 +1,2 @@
+#/usr/bin/env bash
+pack run keylay-gen.idr $@
