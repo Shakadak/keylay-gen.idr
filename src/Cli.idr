@@ -33,15 +33,22 @@ defaultConfig = MkConfig 0 0 "" False
 parseIterations : String -> Either String Flag
 parseIterations str =
   case parsePositive str of
-    Nothing => Left ("Invalid value for --count: \{str}")
+    Nothing => Left ("Invalid value for --iterations: \{str}")
     (Just n) => Right (Iterations n)
+
+parsePopulation : String -> Either String Flag
+parsePopulation str =
+  case parsePositive str of
+    Nothing => Left ("Invalid value for --population: \{str}")
+    (Just n) => Right (Popultion n)
 
 flagSpecs : List (OptDescr Flag)
 flagSpecs =
   [ MkOpt ['v'] ["verbose"] (NoArg Verbose) "Enable verbose output."
   , MkOpt ['h'] ["help"] (NoArg Help) "Show this help."
   , MkOpt ['i'] ["iterations"] (ReqArg' parseIterations "N") "How many iterations to run."
-  , MkOpt ['p'] ["population"] (ReqArg' parseIterations "P") "How large the population is."
+  , MkOpt ['p'] ["population"] (ReqArg' parsePopulation "P") "How large the population is."
+  , MkOpt ['t'] ["target"] (ReqArg Target "T") "How large the population is."
   ]
 
 usage = usageInfo "Usage: keylay-gen [OPTIONS]" flagSpecs

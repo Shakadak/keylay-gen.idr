@@ -1,2 +1,2 @@
 #/usr/bin/env bash
-pack run keylay-gen.idr $@
+pack run keylay-gen.ipkg $@
