@@ -21,17 +21,12 @@ selectSplit (x :: xs) = ?selectSplit_rhs_1
 genePool : List Char
 genePool = unpack "abcdefghijklmnopqrstuvwxyz"
 
-goGenMember : HasIO io => Nat -> io (List Char)
-goGenMember 0 = pure []
-goGenMember (S k) = [| rndSelect genePool :: goGenMember k |]
-
 genMember : HasIO io => Nat -> io String
-genMember n = map pack (goGenMember n)
+genMember n = map pack <| sequence <| replicate n <| rndSelect genePool
 
 
 genPop : HasIO io => Nat -> Nat -> io <| List String
-genPop 0 _ = pure []
-genPop (S k) s = [| genMember s :: genPop k s |]
+genPop n s = sequence <| replicate n <| genMember s
 
 sortByM : Monad m => Ord ord => (a -> m ord) -> List a -> m (List a)
 sortByM by xs = do
