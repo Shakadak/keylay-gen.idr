@@ -40,7 +40,7 @@ parsePopulation : String -> Either String Flag
 parsePopulation str =
   case parsePositive str of
     Nothing => Left ("Invalid value for --population: \{str}")
-    (Just n) => Right (Popultion n)
+    (Just n) => Right (Population n)
 
 flagSpecs : List (OptDescr Flag)
 flagSpecs =
