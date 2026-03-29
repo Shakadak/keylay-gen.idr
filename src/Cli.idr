@@ -80,8 +80,8 @@ parseArgs strs =
         ++ map (\u => "unrecognized option \{u}") res.unrecognized
         ++ handleNonOptions res.nonOptions
   in case errs of
-          (_ :: _) => Left <| unlines (errs ++ ["", usage])
-          [] =>
-            if wantsHelp res.options
-            then Left usage
-            else Right (foldl (flip applyFlag) defaultConfig res.options)
+    (_ :: _) => Left <| unlines (errs ++ ["", usage])
+    [] =>
+      if wantsHelp res.options
+      then Left usage
+      else Right (foldl (flip applyFlag) defaultConfig res.options)
