@@ -2,9 +2,10 @@ module Main
 
 import Control.App
 import Control.App.Console
+import Data.List
+import Data.Maybe
 import System
 import System.Random
-import Data.List
 import Text.Distance.Levenshtein
 
 import Cli
@@ -33,13 +34,25 @@ sortByM by xs = do
   ts <- traverse (\x => (x,) <$> by x) xs
   pure <| map fst <| sortBy (compare `on` snd) ts
 
-iterPop : HasIO io => Ord ord => (String -> io ord) -> List String -> io (List String)
-iterPop evaluateMember strs = do
-  pop <- traverse (genMember . String.length) strs
-  pop <- sortByM evaluateMember (pop ++ strs)
-  let pop = take (length strs) pop
+combine : HasIO io => String -> String -> io (List String)
+combine l r = do
+  let max : Int32 = cast (length l) - 1
+  needle <- map cast <| randomRIO (0, max)
+  let (hl, tl) = splitAt needle <| fastUnpack l
+  let (hr, tr) = splitAt needle <| fastUnpack r
+  pure <| map fastPack [hl ++ tr, hr ++ tl]
+
+%ambiguity_depth 5
+iterPop : HasIO io => Ord ord => (String -> io ord) -> (l : List String) -> io (List String)
+iterPop evaluateMember oldGen = do
+  newGen <- traverse (genMember . String.length) oldGen
+  pop <- sortByM evaluateMember <| nub (newGen ++ oldGen)
+  nextGen <- sequence <| zipWith combine pop (fromMaybe [] <| tail' pop)
+  pop <- sortByM evaluateMember <| nub (pop ++ concat nextGen)
+  let pop = take (length oldGen) pop
   putStrLn "Intermediate population: \{show pop}"
   pure pop
+%ambiguity_depth 3
 
 program : Has [Console, PrimIO] es => App es ()
 program = do
