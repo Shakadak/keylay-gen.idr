@@ -32,8 +32,11 @@ genPop : HasIO io => Nat -> Nat -> io <| List String
 genPop 0 _ = pure []
 genPop (S k) s = [| genMember s :: genPop k s |]
 
-iterPop : List String -> List String
-iterPop strs = ?iterPop_rhs
+iterPop : HasIO io => List String -> io (List String)
+iterPop strs =
+  do pop <- traverse (genMember . String.length) strs
+     putStrLn "Intermediate population: \{show pop}"
+     pure pop
 
 program : Has [Console, PrimIO] es => App es ()
 program =
@@ -49,9 +52,9 @@ program =
           verbose = \{show cfg.verbose}
           """
           initPop <- primIO <| genPop cfg.population <| length cfg.target
-          printLn initPop
-          pop <- nTimes cfg.iterations (map iterPop) <| pure initPop
-          printLn pop
+          putStrLn "Initial population:      \{show initPop}"
+          pop <- nTimes cfg.iterations (>>= primIO . iterPop) <| pure initPop
+          putStrLn "Final population:        \{show pop}"
 
 main : IO ()
 main = run program
