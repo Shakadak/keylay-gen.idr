@@ -5,6 +5,7 @@ import Control.App.Console
 import System
 import System.Random
 import Data.List
+import Text.Distance.Levenshtein
 
 import Cli
 
@@ -32,9 +33,17 @@ genPop : HasIO io => Nat -> Nat -> io <| List String
 genPop 0 _ = pure []
 genPop (S k) s = [| genMember s :: genPop k s |]
 
-iterPop : HasIO io => List String -> io (List String)
-iterPop strs =
+sortByM : Monad m => Ord ord => (a -> m ord) -> List a -> m (List a)
+sortByM by xs = do
+  ts <- traverse (\x => (x,) <$> by x) xs
+  let sts = sortBy (compare `on` snd) ts
+  pure <| map fst sts
+
+iterPop : HasIO io => Ord ord => (String -> io ord) -> List String -> io (List String)
+iterPop evaluateMember strs =
   do pop <- traverse (genMember . String.length) strs
+     pop <- sortByM evaluateMember (pop ++ strs)
+     let pop = take (length strs) pop
      putStrLn "Intermediate population: \{show pop}"
      pure pop
 
@@ -53,7 +62,7 @@ program =
           """
           initPop <- primIO <| genPop cfg.population <| length cfg.target
           putStrLn "Initial population:      \{show initPop}"
-          pop <- nTimes cfg.iterations (>>= primIO . iterPop) <| pure initPop
+          pop <- nTimes cfg.iterations (>>= primIO . iterPop (compute cfg.target)) <| pure initPop
           putStrLn "Final population:        \{show pop}"
 
 main : IO ()
