@@ -42,15 +42,21 @@ combine l r = do
   let (hr, tr) = splitAt needle <| fastUnpack r
   pure <| map fastPack [hl ++ tr, hr ++ tl]
 
-%ambiguity_depth 5
-iterPop : HasIO io => Ord ord => (String -> io ord) -> (l : List String) -> io (List String)
-iterPop evaluateMember oldGen = do
-  newGen <- traverse (genMember . String.length) oldGen
-  pop <- sortByM evaluateMember <| nub (newGen ++ oldGen)
+%ambiguity_depth 6
+iterPop : HasIO io => Eq val => Show val
+  => io val
+  -> (List val -> io (List val))
+  -> (val -> val -> io (List val))
+  -> (List val -> io ())
+  -> List val
+  -> io (List val)
+iterPop generate rank combine inspect oldGen = do
+  newGen <- traverse (const generate) oldGen
+  pop <- rank <| nub (newGen ++ oldGen)
   nextGen <- sequence <| zipWith combine pop (fromMaybe [] <| tail' pop)
-  pop <- sortByM evaluateMember <| nub (pop ++ concat nextGen)
+  pop <- rank <| nub (pop ++ concat nextGen)
   let pop = take (length oldGen) pop
-  putStrLn "Intermediate population: \{show pop}"
+  inspect pop
   pure pop
 %ambiguity_depth 3
 
@@ -68,7 +74,10 @@ program = do
       """
       initPop <- primIO <| genPop cfg.population <| length cfg.target
       putStrLn "Initial population:      \{show initPop}"
-      pop <- nTimes cfg.iterations (>>= primIO . iterPop (compute cfg.target)) <| pure initPop
+      let genMember = genMember <| length cfg.target
+          rank = sortByM <| compute cfg.target
+          inspect = \pop => putStrLn "Intermediate population: \{show pop}"
+      pop <- nTimes cfg.iterations (>>= primIO . iterPop genMember rank combine inspect) <| pure initPop
       putStrLn "Final population:        \{show pop}"
 
 main : IO ()
