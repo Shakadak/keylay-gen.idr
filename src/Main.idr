@@ -57,13 +57,12 @@ mutate str = do
   pure <| fastPack new
 
 iterPop : HasIO io => Eq val => Show val
-  => io val
-  -> (List val -> io (List val))
+  => (List val -> io (List val))
   -> (val -> val -> io (List val))
   -> (List val -> io ())
   -> List val
   -> io (List val)
-iterPop generate rank combine inspect oldGen = do
+iterPop rank combine inspect oldGen = do
   nextGen <- sequence <| zipWith combine oldGen (fromMaybe [] <| tail' oldGen)
   pop <- rank <| nub (oldGen ++ concat nextGen)
   let pop = take (length oldGen) pop
@@ -84,11 +83,10 @@ program = do
       """
       initPop <- primIO <| genPop cfg.population <| length cfg.target
       putStrLn "Initial population:      \{show initPop}"
-      let genMember = genMember <| length cfg.target
-          rank = sortByM <| compute cfg.target
-          inspect = \pop => putStrLn "Intermediate population: \{show pop}"
+      let rank = sortByM <| compute cfg.target
+          inspect = \pop => putStrLn "Intermediate top member: \{show <| maybe "" id <| head'  pop}"
           combine = (>>= traverse mutate) .: combine
-      pop <- nTimes cfg.iterations (>>= primIO . iterPop genMember rank combine inspect) <| pure initPop
+      pop <- nTimes cfg.iterations (>>= primIO . iterPop rank combine inspect) <| pure initPop
       putStrLn "Final population:        \{show pop}"
 
 main : IO ()
