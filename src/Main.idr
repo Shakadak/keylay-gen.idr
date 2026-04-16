@@ -4,6 +4,7 @@ import Control.App
 import Control.App.Console
 import Data.List
 import Data.Maybe
+import Data.Monoid.Exponentiation
 import System
 import System.Random
 import Text.Distance.Levenshtein
@@ -57,12 +58,12 @@ mutate str = do
         No _ => unpkd
   pure <| fastPack new
 
-iterPop : HasIO io => Eq val => Show val
-  => (List val -> io (List val))
-  -> (val -> val -> io (List val))
-  -> (List val -> io ())
+iterPop : Monad m => Eq val => Show val
+  => (List val -> m (List val)) -- rank
+  -> (val -> val -> m (List val)) -- combine
+  -> (List val -> m ()) -- inspect
   -> List val
-  -> io (List val)
+  -> m (List val)
 iterPop rank combine inspect oldGen = do
   nextGen <- sequence <| zipWith combine oldGen (fromMaybe [] <| tail' oldGen)
   pop <- rank <| nub (oldGen ++ concat nextGen)
@@ -82,13 +83,22 @@ program = do
       population = \{show cfg.population}
       verbose = \{show cfg.verbose}
       """
-      initPop <- primIO <| genPop cfg.population <| length cfg.target
-      putStrLn "Initial population:      \{show initPop}"
-      let rank = sortByM <| compute cfg.target
-          inspect = \pop => putStrLn "Intermediate top member: \{show <| maybe "" id <| head'  pop}"
-          combine = (>>= traverse mutate) .: combine
-      pop <- nTimes cfg.iterations (>>= primIO . iterPop rank combine inspect) <| pure initPop
-      putStrLn "Final population:        \{show pop}"
+      let genPop : HasIO io => Nat -> io $ List $ Guide 28
+          genPop n = sequence $ replicate n newGuide
+      initPop <- primIO $ genPop cfg.population
+      putStrLn "Initial population:      \{show $ map (solution solutionMap) initPop}"
+      let rank = sortByM $ (map (^2) . compute cfg.target) . (solution solutionMap)
+          combine = \a, b => do
+            (left, right) <- crossover a b
+            mleft <- mutate left
+            mright <- mutate right
+            pure [mleft, mright]
+          -- inspect : HasIO io => List (Guide 28) -> io ()
+          inspect = \pop => putStrLn "Target: \{cfg.target}; Intermediate top member: \{maybe "" (solution solutionMap) <| head' pop}"
+      let -- iterator : HasIO io => io (List (Guide 28)) -> io (List (Guide 28))
+          iterator = \mpop => mpop >>= (iterPop rank combine inspect)
+      pop <- primIO $ nTimes cfg.iterations iterator <| pure initPop
+      putStrLn "Final population:        \{show $ map (solution solutionMap) initPop}"
 
 main : IO ()
 main = run program
