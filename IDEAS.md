@@ -11,6 +11,7 @@
 - [ ] hall of fame (remove elitism post generational death)
 - [ ] rework to selection -> combination -> crossover -> mutation
   - [ ] does the order matter ?
+- [ ] improve population management
 
 # Non algorithmic
 - [ ] FSM in type to enforce order of operations ?
