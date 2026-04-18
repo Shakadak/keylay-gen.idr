@@ -1,7 +1,8 @@
 module Solution
 
-import Data.Vect
+import Data.Fin
 import Data.Nat
+import Data.Vect
 import System.Random
 
 
@@ -66,16 +67,32 @@ solution : {n : Nat} -> Map n -> Guide n -> String
 solution (MkMap xs) (MkGuide guide) =
   pack $ toList $ updateMap (map extractSwap $ pairings {n = n} guide) xs
 
+rndIndex : HasIO io => {n : _} -> (IsSucc n) -> io (Fin n)
+rndIndex {n = (S k)} ItIsSucc = do
+  let intBound = the Int32 (cast k)
+  randomInt <- randomRIO (0, intBound)
+  pure $ restrict k (cast randomInt)
+
 export
 mutate : HasIO io => {n : _} -> Guide n -> io $ Guide n
 mutate (MkGuide xs) = do
-  target <- rndSelect' $ allFins (2 * n)
-  value <- rndSelect' $ allFins n
+  target <- rndIndex ItIsSucc
+  value <- rndIndex ItIsSucc
   pure $ MkGuide $ replaceAt target (value, MkDominance 1) xs
 
 export
+crossoverAt :
+  (cut : Fin len) ->
+  Vect len a ->
+  Vect len a ->
+  (Vect len a, Vect len a)
+crossoverAt FZ left right = (right, left)
+crossoverAt (FS cut) (l :: left) (r :: right) =
+  let (left, right) = crossoverAt cut left right
+  in (l :: left, r :: right)
+
+export
 crossover : HasIO io => {n : _} -> Guide n -> Guide n -> io $ (Guide n, Guide n)
-crossover (MkGuide xs) (MkGuide ys) = do
-  let left = MkGuide $ (take n xs) ++ (drop n ys)
-  let right = MkGuide $ (take n ys) ++ (drop n xs)
-  pure $ (left, right)
+crossover (MkGuide left) (MkGuide right) = do
+  target <- rndIndex ItIsSucc
+  pure $ mapHom MkGuide $ crossoverAt target left right
