@@ -1,4 +1,4 @@
-module Solution
+module MapGuide
 
 import Data.Fin
 import Data.Nat

@@ -11,7 +11,7 @@ import System.Random
 import Text.Distance.Levenshtein
 
 import Cli
-import Solution
+import MapGuide
 
 nTimes : Nat -> (a -> a) -> a -> a
 nTimes 0 f x = x
