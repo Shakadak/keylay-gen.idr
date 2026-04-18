@@ -5,6 +5,7 @@ import Control.App.Console
 import Data.List
 import Data.Maybe
 import Data.Monoid.Exponentiation
+import Data.String
 import System
 import System.Random
 import Text.Distance.Levenshtein
@@ -83,26 +84,41 @@ program = do
       population = \{show cfg.population}
       verbose = \{show cfg.verbose}
       """
-      let genPop : HasIO io => Nat -> io $ List $ Guide 28
-          genPop n = sequence $ replicate n newGuide
-      initPop <- primIO $ genPop cfg.population
-      putStrLn "Initial population:      \{show $ map (solution solutionMap) initPop}"
-      let eval = (map (^2) . compute cfg.target)
-          rank = sortByM $ eval . (solution solutionMap)
-          combine = \left, right => do
-            (left, right) <- if !(randomRIO (0.0, 1.0)) > 0.1 then crossover left right else pure (left, right)
-            -- (left, right) <- crossover a b
-            left <- if !(randomRIO (0.0, 1.0)) > 0.1 then mutate left else pure left
-            -- left <- mutate left
-            right <- if !(randomRIO (0.0, 1.0)) > 0.1 then mutate right else pure right
-            -- right <- mutate right
-            pure [left, right]
-          -- inspect : HasIO io => List (Guide 28) -> io ()
-          inspect = \pop => putStrLn "Target: \{cfg.target}; Intermediate top member: \{maybe "" (solution solutionMap) <| head' pop}"
-      let -- iterator : HasIO io => io (List (Guide 28)) -> io (List (Guide 28))
-          iterator = \mpop => mpop >>= (iterPop rank combine inspect)
-      pop <- primIO $ nTimes cfg.iterations iterator <| pure initPop
-      putStrLn "Final population:        \{show $ map (solution solutionMap) pop}"
+      let
+        eval : HasIO io => Guide 28 -> io Nat
+        eval = (compute cfg.target) . (solution solutionMap)
+
+        rank : HasIO io => List (Guide 28) -> io $ List $ Guide 28
+        rank = sortByM $ eval
+
+        genPop : HasIO io => Nat -> io $ List $ Guide 28
+        genPop n = sequence $ replicate n newGuide
+
+        format : (Guide 28, Nat) -> String
+        format = \(guide, score) =>
+          "\{solution solutionMap guide} => \{show score}"
+
+        combine : HasIO io => Guide 28 -> Guide 28 -> io $ List (Guide 28)
+        combine = \left, right => do
+          (left, right) <- if !(randomRIO (0.0, 1.0)) > 0.1 then crossover left right else pure (left, right)
+          left <- if !(randomRIO (0.0, 1.0)) > 0.1 then mutate left else pure left
+          right <- if !(randomRIO (0.0, 1.0)) > 0.1 then mutate right else pure right
+          pure [left, right]
+
+        inspect : HasIO io => List (Guide 28) -> io ()
+        inspect = \pop => do
+          formatted <- maybe (pure "") (map format . (\x => (x,) <$> eval x)) $ head' pop
+          putStrLn "Target: \{cfg.target}; Intermediate top member: \{formatted}"
+
+        iterator : HasIO io => io (List (Guide 28)) -> io (List (Guide 28))
+        iterator = (>>= (iterPop rank combine inspect))
+
+      initPop <- primIO $ rank =<< genPop cfg.population
+      ts <- primIO $ traverse (\x => (x,) <$> eval x) initPop
+      putStrLn "Initial population:      \{unwords $ map format ts}"
+      finalPop <- primIO $ rank =<< (nTimes cfg.iterations iterator <| pure initPop)
+      ts <- primIO $ traverse (\x => (x,) <$> eval x) finalPop
+      putStrLn "Final population:        \{unwords $ map format ts}"
 
 main : IO ()
 main = run program
