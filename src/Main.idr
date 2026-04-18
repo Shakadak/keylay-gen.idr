@@ -87,18 +87,22 @@ program = do
           genPop n = sequence $ replicate n newGuide
       initPop <- primIO $ genPop cfg.population
       putStrLn "Initial population:      \{show $ map (solution solutionMap) initPop}"
-      let rank = sortByM $ (map (^2) . compute cfg.target) . (solution solutionMap)
-          combine = \a, b => do
-            (left, right) <- crossover a b
-            mleft <- mutate left
-            mright <- mutate right
-            pure [mleft, mright]
+      let eval = (map (^2) . compute cfg.target)
+          rank = sortByM $ eval . (solution solutionMap)
+          combine = \left, right => do
+            (left, right) <- if !(randomRIO (0.0, 1.0)) > 0.1 then crossover left right else pure (left, right)
+            -- (left, right) <- crossover a b
+            left <- if !(randomRIO (0.0, 1.0)) > 0.1 then mutate left else pure left
+            -- left <- mutate left
+            right <- if !(randomRIO (0.0, 1.0)) > 0.1 then mutate right else pure right
+            -- right <- mutate right
+            pure [left, right]
           -- inspect : HasIO io => List (Guide 28) -> io ()
           inspect = \pop => putStrLn "Target: \{cfg.target}; Intermediate top member: \{maybe "" (solution solutionMap) <| head' pop}"
       let -- iterator : HasIO io => io (List (Guide 28)) -> io (List (Guide 28))
           iterator = \mpop => mpop >>= (iterPop rank combine inspect)
       pop <- primIO $ nTimes cfg.iterations iterator <| pure initPop
-      putStrLn "Final population:        \{show $ map (solution solutionMap) initPop}"
+      putStrLn "Final population:        \{show $ map (solution solutionMap) pop}"
 
 main : IO ()
 main = run program
