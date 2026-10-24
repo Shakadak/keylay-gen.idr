@@ -2,8 +2,6 @@ module Main
 
 import Control.App
 import Control.App.Console
-import Data.List
-import Data.Maybe
 import Data.Monoid.Exponentiation
 import Data.String
 import System
@@ -11,6 +9,7 @@ import System.Random
 import Text.Distance.Levenshtein
 
 import Cli
+import GenAlgo
 import MapGuide
 
 nTimes : Nat -> (a -> a) -> a -> a
@@ -25,6 +24,7 @@ selectSplit (x :: xs) = ?selectSplit_rhs_1
 genePool : List Char
 genePool = unpack "abcdefghijklmnopqrstuvwxyz"
 
+||| Select a random character from the list defined by `genePool`.
 randGene : HasIO io => io Char
 randGene = rndSelect genePool
 
@@ -59,18 +59,6 @@ mutate str = do
         No _ => unpkd
   pure <| fastPack new
 
-iterPop : Monad m => Eq val => Show val
-  => (List val -> m (List val)) -- rank
-  -> (val -> val -> m (List val)) -- combine
-  -> (List val -> m ()) -- inspect
-  -> List val
-  -> m (List val)
-iterPop rank combine inspect oldGen = do
-  nextGen <- sequence <| zipWith combine oldGen (fromMaybe [] <| tail' oldGen)
-  pop <- rank <| nub (oldGen ++ concat nextGen)
-  let pop = take (length oldGen) pop
-  inspect pop
-  pure pop
 
 program : Has [Console, PrimIO] es => App es ()
 program = do
